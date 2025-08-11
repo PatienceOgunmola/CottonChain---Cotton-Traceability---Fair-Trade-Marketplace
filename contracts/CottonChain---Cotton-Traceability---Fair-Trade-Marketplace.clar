@@ -5,11 +5,15 @@
 (define-constant ERR_INVALID_AMOUNT (err u400))
 (define-constant ERR_INSUFFICIENT_FUNDS (err u402))
 (define-constant ERR_INVALID_STATUS (err u403))
+(define-constant ERR_ALREADY_CLAIMED (err u405))
+(define-constant ERR_NOT_ELIGIBLE (err u406))
 
 (define-non-fungible-token cotton-bale uint)
 
 (define-data-var next-bale-id uint u1)
 (define-data-var platform-fee uint u25)
+(define-data-var quality-pool-balance uint u0)
+(define-data-var reward-per-grade uint u100)
 
 (define-map bale-data
   uint
@@ -59,6 +63,17 @@
   }
 )
 
+(define-map quality-rewards
+  uint
+  {
+    bale-id: uint,
+    farmer: principal,
+    reward-amount: uint,
+    claimed: bool,
+    eligible-at: uint
+  }
+)
+
 (define-data-var next-escrow-id uint u1)
 (define-data-var next-audit-id uint u1)
 
@@ -89,6 +104,18 @@
   (var-get platform-fee)
 )
 
+(define-read-only (get-quality-pool-balance)
+  (var-get quality-pool-balance)
+)
+
+(define-read-only (get-quality-reward (reward-id uint))
+  (map-get? quality-rewards reward-id)
+)
+
+(define-read-only (get-reward-per-grade)
+  (var-get reward-per-grade)
+)
+
 (define-public (mint-cotton-bale 
   (farm-location (string-ascii 100))
   (weight-kg uint)
@@ -111,6 +138,7 @@
       status: "available"
     })
     (unwrap-panic (add-audit-entry bale-id "minted" tx-sender "Cotton bale minted by farmer"))
+    (unwrap-panic (check-quality-eligibility bale-id))
     (var-set next-bale-id (+ bale-id u1))
     (ok bale-id)
   )
@@ -245,6 +273,43 @@
   )
 )
 
+(define-public (contribute-to-quality-pool (amount uint))
+  (begin
+    (asserts! (> amount u0) ERR_INVALID_AMOUNT)
+    (try! (stx-transfer? amount tx-sender (as-contract tx-sender)))
+    (var-set quality-pool-balance (+ (var-get quality-pool-balance) amount))
+    (ok true)
+  )
+)
+
+(define-public (claim-quality-reward (reward-id uint))
+  (let (
+    (reward (unwrap! (get-quality-reward reward-id) ERR_NOT_FOUND))
+    (pool-balance (var-get quality-pool-balance))
+  )
+    (asserts! (is-eq tx-sender (get farmer reward)) ERR_UNAUTHORIZED)
+    (asserts! (not (get claimed reward)) ERR_ALREADY_CLAIMED)
+    (asserts! (>= stacks-block-height (get eligible-at reward)) ERR_NOT_ELIGIBLE)
+    (asserts! (>= pool-balance (get reward-amount reward)) ERR_INSUFFICIENT_FUNDS)
+    
+    (try! (as-contract (stx-transfer? (get reward-amount reward) tx-sender (get farmer reward))))
+    (var-set quality-pool-balance (- pool-balance (get reward-amount reward)))
+    (map-set quality-rewards reward-id
+      (merge reward {claimed: true})
+    )
+    (ok true)
+  )
+)
+
+(define-public (set-reward-per-grade (new-reward uint))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (asserts! (> new-reward u0) ERR_INVALID_AMOUNT)
+    (var-set reward-per-grade new-reward)
+    (ok true)
+  )
+)
+
 (define-private (add-audit-entry (bale-id uint) (action (string-ascii 50)) (actor principal) (details (string-ascii 200)))
   (let ((audit-id (var-get next-audit-id)))
     (map-set audit-trail audit-id {
@@ -256,5 +321,44 @@
     })
     (var-set next-audit-id (+ audit-id u1))
     (ok audit-id)
+  )
+)
+
+(define-private (check-quality-eligibility (bale-id uint))
+  (let (
+    (bale (unwrap! (get-bale-data bale-id) ERR_NOT_FOUND))
+    (reward-amount (calculate-quality-reward (get quality-grade bale) (get lab-certified bale)))
+  )
+    (if (> reward-amount u0)
+      (begin
+        (map-set quality-rewards bale-id {
+          bale-id: bale-id,
+          farmer: (get farmer bale),
+          reward-amount: reward-amount,
+          claimed: false,
+          eligible-at: (+ stacks-block-height u144)
+        })
+        (ok true)
+      )
+      (ok false)
+    )
+  )
+)
+
+(define-private (calculate-quality-reward (grade (string-ascii 10)) (lab-certified bool))
+  (let ((base-reward (var-get reward-per-grade)))
+    (if lab-certified
+      (if (is-eq grade "Grade A")
+        (* base-reward u3)
+        (if (is-eq grade "Grade B")
+          (* base-reward u2)
+          (if (is-eq grade "Grade C")
+            base-reward
+            u0
+          )
+        )
+      )
+      u0
+    )
   )
 )
