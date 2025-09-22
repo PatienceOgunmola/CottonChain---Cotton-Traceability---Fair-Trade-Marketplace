@@ -116,7 +116,7 @@
   (var-get reward-per-grade)
 )
 
-(define-public (mint-cotton-bale 
+(define-public (mint-cotton-bale
   (farm-location (string-ascii 100))
   (weight-kg uint)
   (quality-grade (string-ascii 10))
@@ -141,6 +141,97 @@
     (unwrap-panic (check-quality-eligibility bale-id))
     (var-set next-bale-id (+ bale-id u1))
     (ok bale-id)
+  )
+)
+
+(define-private (add-audit-entry (bale-id uint) (action (string-ascii 50)) (actor principal) (details (string-ascii 200)))
+  (let ((audit-id (var-get next-audit-id)))
+    (map-set audit-trail audit-id {
+      bale-id: bale-id,
+      action: action,
+      actor: actor,
+      timestamp: stacks-block-height,
+      details: details
+    })
+    (var-set next-audit-id (+ audit-id u1))
+    (ok audit-id)
+  )
+)
+
+(define-private (mint-single (bale {farm-location: (string-ascii 100), weight-kg: uint, quality-grade: (string-ascii 10), harvest-date: uint, lab-certified: bool, lab-report-hash: (string-ascii 64), price-per-kg: uint}))
+  (let ((bale-id (var-get next-bale-id)))
+    (unwrap-panic (nft-mint? cotton-bale bale-id tx-sender))
+    (map-set bale-data bale-id {
+      farmer: tx-sender,
+      farm-location: (get farm-location bale),
+      weight-kg: (get weight-kg bale),
+      quality-grade: (get quality-grade bale),
+      harvest-date: (get harvest-date bale),
+      lab-certified: (get lab-certified bale),
+      lab-report-hash: (get lab-report-hash bale),
+      price-per-kg: (get price-per-kg bale),
+      status: "available"
+    })
+    (unwrap-panic (add-audit-entry bale-id "minted" tx-sender "Cotton bale minted by farmer"))
+    (unwrap-panic (check-quality-eligibility bale-id))
+    (var-set next-bale-id (+ bale-id u1))
+    bale-id
+  )
+)
+
+(define-public (batch-mint-cotton-bales (bales (list 10 {farm-location: (string-ascii 100), weight-kg: uint, quality-grade: (string-ascii 10), harvest-date: uint, lab-certified: bool, lab-report-hash: (string-ascii 64), price-per-kg: uint})))
+  (let ((len (len bales)))
+    (if (is-eq len u0)
+      (ok (list ))
+      (let ((id1 (mint-single (unwrap-panic (element-at bales u0)))))
+        (if (is-eq len u1)
+          (ok (list id1))
+          (let ((id2 (mint-single (unwrap-panic (element-at bales u1)))))
+            (if (is-eq len u2)
+              (ok (list id1 id2))
+              (let ((id3 (mint-single (unwrap-panic (element-at bales u2)))))
+                (if (is-eq len u3)
+                  (ok (list id1 id2 id3))
+                  (let ((id4 (mint-single (unwrap-panic (element-at bales u3)))))
+                    (if (is-eq len u4)
+                      (ok (list id1 id2 id3 id4))
+                      (let ((id5 (mint-single (unwrap-panic (element-at bales u4)))))
+                        (if (is-eq len u5)
+                          (ok (list id1 id2 id3 id4 id5))
+                          (let ((id6 (mint-single (unwrap-panic (element-at bales u5)))))
+                            (if (is-eq len u6)
+                              (ok (list id1 id2 id3 id4 id5 id6))
+                              (let ((id7 (mint-single (unwrap-panic (element-at bales u6)))))
+                                (if (is-eq len u7)
+                                  (ok (list id1 id2 id3 id4 id5 id6 id7))
+                                  (let ((id8 (mint-single (unwrap-panic (element-at bales u7)))))
+                                    (if (is-eq len u8)
+                                      (ok (list id1 id2 id3 id4 id5 id6 id7 id8))
+                                      (let ((id9 (mint-single (unwrap-panic (element-at bales u8)))))
+                                        (if (is-eq len u9)
+                                          (ok (list id1 id2 id3 id4 id5 id6 id7 id8 id9))
+                                          (let ((id10 (mint-single (unwrap-panic (element-at bales u9)))))
+                                            (ok (list id1 id2 id3 id4 id5 id6 id7 id8 id9 id10))
+                                          )
+                                        )
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
   )
 )
 
@@ -307,20 +398,6 @@
     (asserts! (> new-reward u0) ERR_INVALID_AMOUNT)
     (var-set reward-per-grade new-reward)
     (ok true)
-  )
-)
-
-(define-private (add-audit-entry (bale-id uint) (action (string-ascii 50)) (actor principal) (details (string-ascii 200)))
-  (let ((audit-id (var-get next-audit-id)))
-    (map-set audit-trail audit-id {
-      bale-id: bale-id,
-      action: action,
-      actor: actor,
-      timestamp: stacks-block-height,
-      details: details
-    })
-    (var-set next-audit-id (+ audit-id u1))
-    (ok audit-id)
   )
 )
 

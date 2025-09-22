@@ -1,4 +1,4 @@
-> 🚀 **Decentralized cotton traceability platform empowering farmers through blockchain technology**
+Decentralized cotton traceability platform empowering farmers through blockchain technology
 
 ## 🎯 Overview
 
@@ -11,6 +11,11 @@ CottonChain is a revolutionary blockchain-based platform that connects cotton fa
 - Immutable farm and laboratory data attached
 - Quality grades and certifications tracked
 - Complete harvest and processing history
+
+### 🌾 **Batch Minting**
+- Mint multiple cotton bale NFTs in a single transaction
+- Optimized for large-scale farming operations
+- Reduces transaction costs and improves efficiency
 
 ### 💰 **Smart Escrow System**
 - Secure transactions between farmers and mills
@@ -36,14 +41,24 @@ CottonChain is a revolutionary blockchain-based platform that connects cotton fa
 
 #### Mint a Cotton Bale NFT
 ```clarity
-(contract-call? .cotton-chain mint-cotton-bale 
-  "Farm Location, State" 
+(contract-call? .cotton-chain mint-cotton-bale
+  "Farm Location, State"
   u500                    ;; weight in kg
   "Grade A"              ;; quality grade
   u1000                  ;; harvest date (block height)
   true                   ;; lab certified
   "abc123..."            ;; lab report hash
   u50)                   ;; price per kg in microSTX
+```
+
+#### Batch Mint Cotton Bale NFTs
+```clarity
+(contract-call? .cotton-chain batch-mint-cotton-bales
+  (list
+    {farm-location: "Farm A", weight-kg: u500, quality-grade: "Grade A", harvest-date: u1000, lab-certified: true, lab-report-hash: "hash1", price-per-kg: u50}
+    {farm-location: "Farm B", weight-kg: u600, quality-grade: "Grade B", harvest-date: u1001, lab-certified: false, lab-report-hash: "hash2", price-per-kg: u45}
+  )
+)
 ```
 
 #### Update Bale Status
@@ -99,6 +114,7 @@ CottonChain is a revolutionary blockchain-based platform that connects cotton fa
 
 ### ✍️ **Public Functions**
 - `mint-cotton-bale` - Create new cotton bale NFT
+- `batch-mint-cotton-bales` - Create multiple cotton bale NFTs at once
 - `create-escrow` - Start escrow agreement
 - `complete-escrow` - Finalize transaction
 - `cancel-escrow` - Cancel pending transaction
