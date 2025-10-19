@@ -7,6 +7,9 @@
 (define-constant ERR_INVALID_STATUS (err u403))
 (define-constant ERR_ALREADY_CLAIMED (err u405))
 (define-constant ERR_NOT_ELIGIBLE (err u406))
+(define-constant ERR_DISPUTE_EXISTS (err u407))
+(define-constant ERR_DISPUTE_NOT_FOUND (err u408))
+(define-constant ERR_DISPUTE_RESOLVED (err u409))
 
 (define-non-fungible-token cotton-bale uint)
 
@@ -74,8 +77,21 @@
   }
 )
 
+(define-map disputes
+  uint
+  {
+    escrow-id: uint,
+    initiator: principal,
+    reason: (string-ascii 200),
+    status: (string-ascii 20),
+    created-at: uint,
+    resolved-at: (optional uint)
+  }
+)
+
 (define-data-var next-escrow-id uint u1)
 (define-data-var next-audit-id uint u1)
+(define-data-var next-dispute-id uint u1)
 
 (define-read-only (get-bale-data (bale-id uint))
   (map-get? bale-data bale-id)
@@ -114,6 +130,10 @@
 
 (define-read-only (get-reward-per-grade)
   (var-get reward-per-grade)
+)
+
+(define-read-only (get-dispute (dispute-id uint))
+  (map-get? disputes dispute-id)
 )
 
 (define-public (mint-cotton-bale
@@ -397,6 +417,56 @@
     (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
     (asserts! (> new-reward u0) ERR_INVALID_AMOUNT)
     (var-set reward-per-grade new-reward)
+    (ok true)
+  )
+)
+
+(define-public (initiate-dispute (escrow-id uint) (reason (string-ascii 200)))
+  (let (
+    (escrow (unwrap! (get-escrow escrow-id) ERR_NOT_FOUND))
+    (dispute-id (var-get next-dispute-id))
+  )
+    (asserts! (or (is-eq tx-sender (get buyer escrow)) (is-eq tx-sender (get seller escrow))) ERR_UNAUTHORIZED)
+    (asserts! (is-eq (get status escrow) "pending") ERR_INVALID_STATUS)
+    (asserts! (is-none (map-get? disputes dispute-id)) ERR_DISPUTE_EXISTS)
+    (map-set disputes dispute-id {
+      escrow-id: escrow-id,
+      initiator: tx-sender,
+      reason: reason,
+      status: "open",
+      created-at: stacks-block-height,
+      resolved-at: none
+    })
+    (var-set next-dispute-id (+ dispute-id u1))
+    (ok dispute-id)
+  )
+)
+
+(define-public (resolve-dispute (dispute-id uint) (buyer-share uint) (seller-share uint))
+  (let (
+    (dispute (unwrap! (get-dispute dispute-id) ERR_DISPUTE_NOT_FOUND))
+    (escrow (unwrap! (get-escrow (get escrow-id dispute)) ERR_NOT_FOUND))
+    (bale (unwrap! (get-bale-data (get bale-id escrow)) ERR_NOT_FOUND))
+    (total-amount (get total-amount escrow))
+  )
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (asserts! (is-eq (get status dispute) "open") ERR_DISPUTE_RESOLVED)
+    (asserts! (is-eq (+ buyer-share seller-share) total-amount) ERR_INVALID_AMOUNT)
+    (try! (as-contract (stx-transfer? buyer-share tx-sender (get buyer escrow))))
+    (try! (as-contract (stx-transfer? seller-share tx-sender (get seller escrow))))
+    (if (> buyer-share u0)
+      (try! (nft-transfer? cotton-bale (get bale-id escrow) (get seller escrow) (get buyer escrow)))
+      true
+    )
+    (map-set escrow-agreements (get escrow-id dispute)
+      (merge escrow {status: "disputed"})
+    )
+    (map-set bale-data (get bale-id escrow)
+      (merge bale {status: (if (> buyer-share u0) "sold" "available")})
+    )
+    (map-set disputes dispute-id
+      (merge dispute {status: "resolved", resolved-at: (some stacks-block-height)})
+    )
     (ok true)
   )
 )

@@ -23,6 +23,12 @@ CottonChain is a revolutionary blockchain-based platform that connects cotton fa
 - Built-in dispute resolution mechanisms
 - Platform fee collection (2.5% default)
 
+### ⚖️ **Dispute Resolution Mechanism**
+- Initiate disputes on pending escrows for fair resolution
+- Contract owner arbitrates and distributes funds accordingly
+- Transparent and trust-enhancing process
+- Prevents fraudulent transactions and ensures accountability
+
 ### 📋 **Public Audit Trail**
 - Complete transaction history
 - Real-time status tracking
@@ -85,6 +91,16 @@ CottonChain is a revolutionary blockchain-based platform that connects cotton fa
 (contract-call? .cotton-chain cancel-escrow u1)
 ```
 
+#### Initiate Dispute
+```clarity
+(contract-call? .cotton-chain initiate-dispute u1 "Product quality not as described")
+```
+
+#### Resolve Dispute (Admin Only)
+```clarity
+(contract-call? .cotton-chain resolve-dispute u1 u500 u0)  ;; Buyer gets full refund, seller gets nothing
+```
+
 ### 👥 **For All Users**
 
 #### Rate a User
@@ -118,6 +134,8 @@ CottonChain is a revolutionary blockchain-based platform that connects cotton fa
 - `create-escrow` - Start escrow agreement
 - `complete-escrow` - Finalize transaction
 - `cancel-escrow` - Cancel pending transaction
+- `initiate-dispute` - Raise dispute on pending escrow
+- `resolve-dispute` - Admin resolution of disputes
 - `rate-user` - Submit user rating
 - `update-bale-status` - Update bale status
 - `set-platform-fee` - Admin fee adjustment
@@ -156,6 +174,14 @@ CottonChain is a revolutionary blockchain-based platform that connects cotton fa
 - Actor address
 - Timestamp
 - Additional details
+
+**Disputes:**
+- Escrow ID
+- Initiator address
+- Reason for dispute
+- Status (open/resolved)
+- Creation timestamp
+- Resolution timestamp (optional)
 
 ## 🚀 Getting Started
 
