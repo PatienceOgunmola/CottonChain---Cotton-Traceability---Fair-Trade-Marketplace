@@ -93,6 +93,49 @@
 (define-data-var next-audit-id uint u1)
 (define-data-var next-dispute-id uint u1)
 
+(define-map bale-transfers
+  uint
+  {
+    bale-id: uint,
+    from: principal,
+    to: principal,
+    transfer-type: (string-ascii 20),
+    timestamp: uint,
+    notes: (string-ascii 200)
+  }
+)
+
+(define-data-var next-transfer-id uint u1)
+
+(define-read-only (get-bale-transfer (transfer-id uint))
+  (map-get? bale-transfers transfer-id)
+)
+
+(define-public (transfer-bale-ownership (bale-id uint) (new-owner principal) (transfer-type (string-ascii 20)) (notes (string-ascii 200)))
+  (let (
+    (bale (unwrap! (get-bale-data bale-id) ERR_NOT_FOUND))
+    (transfer-id (var-get next-transfer-id))
+  )
+    (asserts! (is-eq tx-sender (get farmer bale)) ERR_UNAUTHORIZED)
+    (asserts! (not (is-eq new-owner tx-sender)) ERR_INVALID_AMOUNT)
+    (try! (nft-transfer? cotton-bale bale-id tx-sender new-owner))
+    (map-set bale-data bale-id
+      (merge bale {farmer: new-owner})
+    )
+    (map-set bale-transfers transfer-id {
+      bale-id: bale-id,
+      from: tx-sender,
+      to: new-owner,
+      transfer-type: transfer-type,
+      timestamp: stacks-block-height,
+      notes: notes
+    })
+    (unwrap-panic (add-audit-entry bale-id "ownership-transferred" tx-sender "Bale ownership transferred"))
+    (var-set next-transfer-id (+ transfer-id u1))
+    (ok transfer-id)
+  )
+)
+
 (define-read-only (get-bale-data (bale-id uint))
   (map-get? bale-data bale-id)
 )

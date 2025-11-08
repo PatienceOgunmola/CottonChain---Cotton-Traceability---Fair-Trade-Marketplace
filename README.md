@@ -41,6 +41,13 @@ CottonChain is a revolutionary blockchain-based platform that connects cotton fa
 - Community-driven quality assurance
 - Fair trade verification
 
+### 🔄 **Bale Ownership Transfer**
+- Seamless transfer of cotton bale ownership between farmers
+- Detailed transfer history with timestamps and notes
+- Support for different transfer types (sale, inheritance, partnership)
+- Enhanced traceability through complete ownership chain
+- Automated audit trail updates for transparency
+
 ## 🛠️ Usage Instructions
 
 ### 🌾 **For Farmers**
@@ -118,13 +125,28 @@ CottonChain is a revolutionary blockchain-based platform that connects cotton fa
 (contract-call? .cotton-chain get-user-rating 'SP1234...)
 ```
 
+#### Transfer Bale Ownership
+```clarity
+(contract-call? .cotton-chain transfer-bale-ownership
+  u1                     ;; bale ID
+  'SPNEWOWNER...         ;; new owner principal
+  "sale"                 ;; transfer type
+  "Transferred for partnership")  ;; notes
+```
+
+#### Check Transfer History
+```clarity
+(contract-call? .cotton-chain get-bale-transfer u1)
+```
+
 ## 📊 Contract Functions
 
 ### 📖 **Read-Only Functions**
 - `get-bale-data` - Retrieve cotton bale information
-- `get-escrow` - Check escrow agreement details  
+- `get-escrow` - Check escrow agreement details
 - `get-user-rating` - View user reputation scores
 - `get-audit-entry` - Access audit trail records
+- `get-bale-transfer` - View bale ownership transfer history
 - `get-next-bale-id` - Get next available bale ID
 - `get-platform-fee` - Check current platform fee
 
@@ -138,6 +160,7 @@ CottonChain is a revolutionary blockchain-based platform that connects cotton fa
 - `resolve-dispute` - Admin resolution of disputes
 - `rate-user` - Submit user rating
 - `update-bale-status` - Update bale status
+- `transfer-bale-ownership` - Transfer bale ownership between farmers
 - `set-platform-fee` - Admin fee adjustment
 
 ## 🏗️ Contract Structure
@@ -182,6 +205,13 @@ CottonChain is a revolutionary blockchain-based platform that connects cotton fa
 - Status (open/resolved)
 - Creation timestamp
 - Resolution timestamp (optional)
+
+**Bale Transfers:**
+- Bale ID
+- From/To addresses
+- Transfer type
+- Timestamp
+- Additional notes
 
 ## 🚀 Getting Started
 
