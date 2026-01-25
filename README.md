@@ -48,6 +48,13 @@ CottonChain is a revolutionary blockchain-based platform that connects cotton fa
 - Enhanced traceability through complete ownership chain
 - Automated audit trail updates for transparency
 
+### 📦 **Batch Bale Transfer**
+- Transfer ownership of multiple cotton bales in a single transaction
+- Supports up to 3 bales per batch for optimal efficiency
+- Reduces transaction costs for bulk operations
+- Maintains full audit trail and validation for each transfer
+- Ideal for large-scale farming partnerships and sales
+
 ## 🛠️ Usage Instructions
 
 ### 🌾 **For Farmers**
@@ -134,6 +141,15 @@ CottonChain is a revolutionary blockchain-based platform that connects cotton fa
   "Transferred for partnership")  ;; notes
 ```
 
+#### Batch Transfer Bale Ownership
+```clarity
+(contract-call? .cotton-chain batch-transfer-bales
+  (list u1 u2 u3)        ;; list of bale IDs (up to 3)
+  'SPNEWOWNER...         ;; new owner principal
+  "partnership"          ;; transfer type
+  "Bulk transfer for farming cooperative")  ;; notes
+```
+
 #### Check Transfer History
 ```clarity
 (contract-call? .cotton-chain get-bale-transfer u1)
@@ -161,6 +177,7 @@ CottonChain is a revolutionary blockchain-based platform that connects cotton fa
 - `rate-user` - Submit user rating
 - `update-bale-status` - Update bale status
 - `transfer-bale-ownership` - Transfer bale ownership between farmers
+- `batch-transfer-bales` - Transfer ownership of multiple bales at once
 - `set-platform-fee` - Admin fee adjustment
 
 ## 🏗️ Contract Structure

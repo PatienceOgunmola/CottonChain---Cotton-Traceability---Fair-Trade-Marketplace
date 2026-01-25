@@ -552,3 +552,52 @@
     )
   )
 )
+
+(define-private (batch-transfer-single (bale-id uint) (params {new-owner: principal, transfer-type: (string-ascii 20), notes: (string-ascii 200)}))
+  (let (
+    (bale (unwrap-panic (get-bale-data bale-id)))
+    (transfer-id (var-get next-transfer-id))
+  )
+    (unwrap-panic (if (is-eq tx-sender (get farmer bale)) (some true) none))
+    (unwrap-panic (if (not (is-eq (get new-owner params) tx-sender)) (some true) none))
+    (unwrap-panic (nft-transfer? cotton-bale bale-id tx-sender (get new-owner params)))
+    (map-set bale-data bale-id
+      (merge bale {farmer: (get new-owner params)})
+    )
+    (map-set bale-transfers transfer-id {
+      bale-id: bale-id,
+      from: tx-sender,
+      to: (get new-owner params),
+      transfer-type: (get transfer-type params),
+      timestamp: stacks-block-height,
+      notes: (get notes params)
+    })
+    (unwrap-panic (add-audit-entry bale-id "ownership-transferred" tx-sender "Bale ownership transferred"))
+    (var-set next-transfer-id (+ transfer-id u1))
+    transfer-id
+  )
+)
+
+(define-public (batch-transfer-bales (bale-ids (list 3 uint)) (new-owner principal) (transfer-type (string-ascii 20)) (notes (string-ascii 200)))
+  (let (
+    (len (len bale-ids))
+    (params {new-owner: new-owner, transfer-type: transfer-type, notes: notes})
+  )
+    (if (is-eq len u0)
+      (ok (list ))
+      (let ((id1 (batch-transfer-single (unwrap-panic (element-at bale-ids u0)) params)))
+        (if (is-eq len u1)
+          (ok (list id1))
+          (let ((id2 (batch-transfer-single (unwrap-panic (element-at bale-ids u1)) params)))
+            (if (is-eq len u2)
+              (ok (list id1 id2))
+              (let ((id3 (batch-transfer-single (unwrap-panic (element-at bale-ids u2)) params)))
+                (ok (list id1 id2 id3))
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+)
